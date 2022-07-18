@@ -1,10 +1,12 @@
 import numpy as np 
+from IPython.display import clear_output
+import time
 from profitquantity import quantity_compute, profit_compute
 from copy import deepcopy
 import random
 from find_state import find_rowindex
 
-def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes):
+def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes, S, A, q_table, ci, ai, mu, a0, delta):
     """Training 2 agents
     Arguments:
         alpha: learning rate
@@ -12,11 +14,21 @@ def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes):
         criterion: stopping criterion - number of iterations without price change
         criterion_final: stopping criterion - stops episode after this number of iterations in any case
         n_episodes: number of episodes
+        S: state space
+        A: action space 
+        q_table: initial q-matrix
         
     Returns:
         q_info: array containing prices and profits at every iteration for every episode
         q_tables1: final q_matrix for agent 1
         q_tables2: final q_matrix for agent 2"""
+    
+    # Compute execution time
+    start_time = time.time()
+    
+    # Retrieve state and action space size
+    state_space = len(S)
+    action_space = len(A)
     
     # Store info in array - states, prices for both agents
     q_info = np.zeros((criterion_final,4*n_episodes))
@@ -143,5 +155,7 @@ def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes):
         q_tables2 = np.concatenate((q_tables2,q_table_a2))
 
         print(f"Training finished, episode: {j}")
-        
+    
+    seconds = (time.time() - start_time)
+    print("--- %s minutes ---" % (seconds/60))
     return([q_info,q_tables1,q_tables2])
