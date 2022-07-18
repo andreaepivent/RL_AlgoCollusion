@@ -19,8 +19,6 @@ def impulse_function(cycles,n_episodes,scenario,deviation_ratio,sample,q_table_1
         prices1, prices2: sequence of prices of agent 1 and 2"""
     
     n_seq = 30
-    prices1 = np.zeros((n_episodes,n_seq))
-    prices2 = np.zeros((n_episodes,n_seq))
 
     if sample == "full":
         loop = range(n_episodes)
@@ -36,7 +34,12 @@ def impulse_function(cycles,n_episodes,scenario,deviation_ratio,sample,q_table_1
         
     elif sample == "set":
         loop = np.where((cycles!=1)&(cycles!=1.5))[0]
-        
+    
+    loop_size = len(loop)
+    
+    prices1 = np.zeros((loop_size,n_seq))
+    prices2 = np.zeros((loop_size,n_seq))
+    
     for j in loop:
 
         # We retrieve the forward prices
