@@ -40,8 +40,10 @@ def impulse_function(cycles,n_episodes,scenario,deviation_ratio,sample,q_table_1
     prices1 = np.zeros((loop_size,n_seq))
     prices2 = np.zeros((loop_size,n_seq))
     
+    # start counter
+    i = 0
     for j in loop:
-
+        
         # We retrieve the forward prices
         f_price1, f_price2 = get_forward_price(n_seq,q_table_1,q_table_2,q_info,n_iterations,S,A)
         # Keep last one
@@ -58,8 +60,8 @@ def impulse_function(cycles,n_episodes,scenario,deviation_ratio,sample,q_table_1
         state = find_rowindex(S,f_price1[j][0],f_price2[j][0])
 
         # Storing initial values
-        prices1[j,0] = f_price1[j][0]
-        prices2[j,0] = f_price2[j][0]
+        prices1[i,0] = f_price1[j][0]
+        prices2[i,0] = f_price2[j][0]
 
         for t in range(1,n_seq):
 
@@ -80,10 +82,12 @@ def impulse_function(cycles,n_episodes,scenario,deviation_ratio,sample,q_table_1
                 action_a2 = np.argmax(q2[state])
                 p1, p2 = A[action_a1], A[action_a2]
 
-            prices1[j,t] = p1
-            prices2[j,t] = p2
+            prices1[i,t] = p1
+            prices2[i,t] = p2
 
             state = find_rowindex(S,p1,p2) # new state
+            
+        i += 1
 
     # Visualisation
     plt.plot(prices1.mean(axis=0), marker="o", label = "Agent 1")
