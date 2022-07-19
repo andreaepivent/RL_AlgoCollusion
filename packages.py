@@ -2,6 +2,7 @@
 import os
 import time
 import numpy as np
+import math
 import pandas as pd
 import random
 from IPython.display import clear_output
@@ -11,3 +12,4 @@ import seaborn as sns
 from itertools import cycle
 from scipy import optimize
 sns.set()
+from numba import jit
