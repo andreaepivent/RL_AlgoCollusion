@@ -71,7 +71,7 @@ def find_rowindex(S,row,col):
     return(row_index)
 
 # Q-learning: 2 agents @jit()
-def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterion, criterion_final=criterion_final):
+def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterion, criterion_final=criterion_final, save_info=True):
     """Training 2 agents
     Arguments:
         S: state space
@@ -80,6 +80,7 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
         n_episodes: number of simulations to run
         criterion: stopping criterion (no changes in optimal actions)
         criterion_final: stops simulation in any case after this number of iterations
+        save_info: Whether prices should be saved throughout iterations, default=True
         
     Returns:
         q_info: array containing prices and profits at every iteration for every episode
@@ -93,8 +94,9 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
     state_space = len(S)
     action_space = len(A)
     
-    # Store info in array - states, prices for both agents
-    q_info = np.zeros((criterion_final,4*n_episodes))
+    if save_info == True:
+        # Store info in array - states, prices for both agents
+        q_info = np.zeros((criterion_final,4*n_episodes))
 
     # Initial Q_tables
     q_tables1 = np.zeros([state_space, action_space])
@@ -113,9 +115,10 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
         # The initial state is picked randomly
         state = random.randint(0, state_space-1)
 
-        # Store initial state in dataframe
-        q_info[0,j*4] = S[state][0]
-        q_info[0,(j*4)+1] = S[state][1]
+        if save_info == True:
+            # Store initial state in dataframe
+            q_info[0,j*4] = S[state][0]
+            q_info[0,(j*4)+1] = S[state][1]
 
         # Initialize matrix for keeping track of argmax_p q
         stab1 = np.full([state_space],-1)
@@ -153,12 +156,13 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
             # Retrieve rewards (= profits)
             reward_a1 = profit_compute(p1,p2)
             reward_a2 = profit_compute(p2,p1)
-
-            # Store in array - Begin at i = 1
-            q_info[i,j*4] = p1
-            q_info[i,(j*4)+1] = p2
-            q_info[i,(j*4)+2] = reward_a1
-            q_info[i,(j*4)+3] = reward_a2
+            
+            if save_info == True:
+                # Store in array - Begin at i = 1
+                q_info[i,j*4] = p1
+                q_info[i,(j*4)+1] = p2
+                q_info[i,(j*4)+2] = reward_a1
+                q_info[i,(j*4)+3] = reward_a2
 
             # Check convergence - If 
             a1_argmax = np.argmax(q_table_a1[state]) 
@@ -221,7 +225,10 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
     
     seconds = (time.time() - start_time)
     print("--- %s minutes ---" % (seconds/60))
-    return([q_info,q_tables1,q_tables2])
+    if save_info == True:
+        return([q_info,q_tables1,q_tables2])
+    else:
+        return([q_tables1,q_tables2])
 
 # Retrieve last and forward prices in an experiment
 def get_last_price(x,q_info,n_iterations):
