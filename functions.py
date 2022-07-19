@@ -17,7 +17,7 @@ def p_N():
 
 # Compute cooperation price
 def industry_profit(p):
-    """Returns (-) industry profit"""
+    """Returns negative industry profit"""
     return(-((p - ci) * np.exp((ai - p) / mu) / (n * np.exp((ai - p) / mu) + np.exp(a0 / mu))))
 
 def p_M():
@@ -38,13 +38,7 @@ def extra_profit_compute(p1,p2):
     
     Arguments:
         p1: price of agent 1
-        p2: price of agent 2
-        ci: cost
-        ai: demand parameter
-        mu: horizontal diff
-        a0: demand parameter - outside option
-        profit_M: monopoly profit
-        profit_N: B-N profit"""
+        p2: price of agent 2"""
     
     profit_N = profit_compute(p_N(),p_N())
     profit_M = profit_compute(p_M(),p_M())
@@ -76,15 +70,10 @@ def find_rowindex(S,row,col):
                 row_index = i
     return(row_index)
 
-# Q-learning: 2 agents
-def q_learning_2agents(S, A, q_table):
+# Q-learning: 2 agents @jit()
+def q_learning_2agents(S, A , q_table, n_episodes=n_episodes):
     """Training 2 agents
     Arguments:
-        alpha: learning rate
-        beta: experimentation parameter
-        criterion: stopping criterion - number of iterations without price change
-        criterion_final: stopping criterion - stops episode after this number of iterations in any case
-        n_episodes: number of episodes
         S: state space
         A: action space 
         q_table: initial q-matrix
@@ -139,7 +128,7 @@ def q_learning_2agents(S, A, q_table):
         while convergence == False:
 
             # Time-declining exploration rate
-            epsilon = np.exp(-beta*i) # greedy parameter 
+            epsilon = math.exp(-beta*i) # greedy parameter 
 
             ## Experimentation-exploitation trade-off
             # trade-off for agent 1
@@ -216,7 +205,7 @@ def q_learning_2agents(S, A, q_table):
 
             # If we didn't convergence after final threshold, we end the loop anyway
             if (i == criterion_final-1) & (convergence == False):
-                print("Process has not converged") 
+                #print("Process has not converged") 
                 convergence = True
 
             i += 1
@@ -238,6 +227,7 @@ def get_last_price(x,q_info,n_iterations):
     Arguments:
         x: number of prices we wish to retrieve
         q_info: array containing prices and rewards for all iterations per episode
+        n_iterations: array containing number of iterations made in each episode
         
     Return:
         price1: last prices for agent 1
@@ -314,7 +304,6 @@ def price_cycle(prices):
     
     Arguments:
         prices: contain n forward prices for each episode
-        n_episodes: number of episodes
     
     Returns:
         cycle: cycle length for each episode"""
@@ -353,11 +342,16 @@ def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,
     
     Arguments:
         cycles: array containing cycle length of each episode
-        n_episodes: number of episodes
         deviation_ratio: (cut or raise) deviation ratio, must be positive
         sample: "full" (whole sample), "point" (restriction to episodes where prices have converged to a point)
         "point-asym" (point episodes with asymmetric strategies, "point-sym" (point episodes with symmetric strategies),
         "set" (restriction to episodes where prices have converged to a set
+        q_table_1: final q-matrix of agent 1
+        q_table_2: final q-matrix of agent 2
+        q_info: array containing prices and rewards for all iterations per episode
+        n_iterations: array containing number of iterations made in each episode
+        S: state array
+        A: action array
     
     Returns:
         prices1, prices2: sequence of prices of agent 1 and 2"""
