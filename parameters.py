@@ -1,3 +1,9 @@
+# Set working directory
+path = os.getcwd()
+
+# Import custom functions
+from functions import *
+
 # Economic parameters
 n = 2 # number of agents/firms
 m = 15 # number of possible prices
@@ -8,8 +14,8 @@ mu = 1/4 # horizontal differenciation
 delta = 0.95 # discount factor
 ksi = 0.1 # interval range for prices
 k = 1 # memory width 
-p_N = 1.47 # approximation of B-N price
-p_M = 1.92 # approximation of monopoly price
+p_N = nash_price()
+p_M = coop_price()
 
 state_space = m**(n*k) # cardinal of state space
 action_space = m # cardinal of action space
