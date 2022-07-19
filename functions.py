@@ -71,12 +71,15 @@ def find_rowindex(S,row,col):
     return(row_index)
 
 # Q-learning: 2 agents @jit()
-def q_learning_2agents(S, A , q_table, n_episodes=n_episodes):
+def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterion, criterion_final=criterion_final):
     """Training 2 agents
     Arguments:
         S: state space
         A: action space 
         q_table: initial q-matrix
+        n_episodes: number of simulations to run
+        criterion: stopping criterion (no changes in optimal actions)
+        criterion_final: stops simulation in any case after this number of iterations
         
     Returns:
         q_info: array containing prices and profits at every iteration for every episode
