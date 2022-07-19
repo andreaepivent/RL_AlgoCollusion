@@ -1,8 +1,9 @@
 # Set working directory
+import os
 path = os.getcwd()
 
 # Import packages
-exec(open(path+"/import.py").read())
+exec(open(path+"/packages.py").read())
 
 # Import parameters
 exec(open(path+"/parameters.py").read())
@@ -11,27 +12,53 @@ exec(open(path+"/parameters.py").read())
 def fixed_point(p):
     return(ci + mu/(1 - (n + np.exp((a0 - ai + p) / mu))**(-1)))
 
-def nash_price():
-    return(optimize.fixed_point(fixed_point, 0))
+def p_N():
+    return(round(optimize.fixed_point(fixed_point, [0])[0],2))
 
 # Compute cooperation price
 def industry_profit(p):
     """Returns (-) industry profit"""
     return(-((p - ci) * np.exp((ai - p) / mu) / (n * np.exp((ai - p) / mu) + np.exp(a0 / mu))))
 
-def coop_price():
+def p_M():
     res = optimize.minimize_scalar(industry_profit)
-    return(res.x)
+    return(round(res.x,2))
+
+# Compute quantities, profits and extra-profits
+def quantity_compute(action_agent,action_opponent):
+    num = np.exp((ai-action_agent)/mu)
+    denom = np.exp((ai-action_agent)/mu) + np.exp((ai-action_opponent)/mu) + np.exp(a0/mu)
+    return(num/denom)
+    
+def profit_compute(action_agent,action_opponent):
+    return((action_agent-ci)*quantity_compute(action_agent,action_opponent))
+
+def extra_profit_compute(p1,p2):
+    """Compute extra-profit gain compared to Bertrand-Nash profit
+    
+    Arguments:
+        p1: price of agent 1
+        p2: price of agent 2
+        ci: cost
+        ai: demand parameter
+        mu: horizontal diff
+        a0: demand parameter - outside option
+        profit_M: monopoly profit
+        profit_N: B-N profit"""
+    
+    profit_N = profit_compute(p_N(),p_N())
+    profit_M = profit_compute(p_M(),p_M())
+    return((((profit_compute(p1,p2) + profit_compute(p2,p1))/2)-profit_N)/(profit_M-profit_N))
 
 # Initialize Q-matrix
-def init_Q(state_space,action_space,A,ci,ai,mu,a0,delta,n):
+def init_Q(A):
     q_table = np.zeros([state_space, action_space])
     b = 0 # loop over column
     sum_profit = 0
     for l in range(state_space):
         for i in A:
             for j in A:
-                profit = profitquantity.profit_compute(i,j,ci,ai,mu,a0)
+                profit = profit_compute(i,j)
                 sum_profit += profit
             denom = (1-delta)*(action_space**(n-1))
             q_table[l,b] = sum_profit/denom
@@ -50,7 +77,7 @@ def find_rowindex(S,row,col):
     return(row_index)
 
 # Q-learning: 2 agents
-def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes, S, A, q_table, ci, ai, mu, a0, delta):
+def q_learning_2agents(S, A, q_table):
     """Training 2 agents
     Arguments:
         alpha: learning rate
@@ -132,8 +159,8 @@ def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes, S, A
             next_state = find_rowindex(S,p1,p2) # We find the row index associated with these two new prices
 
             # Retrieve rewards (= profits)
-            reward_a1 = profit_compute(p1,p2,ci,ai,mu,a0)
-            reward_a2 = profit_compute(p2,p1,ci,ai,mu,a0)
+            reward_a1 = profit_compute(p1,p2)
+            reward_a2 = profit_compute(p2,p1)
 
             # Store in array - Begin at i = 1
             q_info[i,j*4] = p1
@@ -204,36 +231,12 @@ def q_learning_2agents(alpha, beta, criterion, criterion_final, n_episodes, S, A
     print("--- %s minutes ---" % (seconds/60))
     return([q_info,q_tables1,q_tables2])
 
-# Compute quantities, profits and extra-profits
-def quantity_compute(action_agent,action_opponent,ai,mu,a0):
-    num = np.exp((ai-action_agent)/mu)
-    denom = np.exp((ai-action_agent)/mu) + np.exp((ai-action_opponent)/mu) + np.exp(a0/mu)
-    return(num/denom)
-    
-def profit_compute(action_agent,action_opponent,ci,ai,mu,a0):
-    return((action_agent-ci)*quantity_compute(action_agent,action_opponent,ai,mu,a0))
-
-def extra_profit_compute(p1,p2,ci,ai,mu,a0,profit_M,profit_N):
-    """Compute extra-profit gain compared to Bertrand-Nash profit
-    
-    Arguments:
-        p1: price of agent 1
-        p2: price of agent 2
-        ci: cost
-        ai: demand parameter
-        mu: horizontal diff
-        a0: demand parameter - outside option
-        profit_M: monopoly profit
-        profit_N: B-N profit"""
-    
-    return((((profit_compute(p1,p2,ci,ai,mu,a0) + profit_compute(p2,p1,ci,ai,mu,a0))/2)-profit_N)/(profit_M-profit_N))
-
 # Retrieve last and forward prices in an experiment
-def get_last_price(n,q_info,n_iterations):
-    """Retrieve last n prices for both agents
+def get_last_price(x,q_info,n_iterations):
+    """Retrieve last x prices for both agents
     
     Arguments:
-        n: number of prices we wish to retrieve
+        x: number of prices we wish to retrieve
         q_info: array containing prices and rewards for all iterations per episode
         
     Return:
@@ -241,21 +244,20 @@ def get_last_price(n,q_info,n_iterations):
         price2: last prices for agent 2"""
   
     # Initialization
-    episodes = int(q_info.shape[1]/4)
-    price1 = np.zeros((episodes,n))
-    price2 = np.zeros((episodes,n))
+    price1 = np.zeros((n_episodes,x))
+    price2 = np.zeros((n_episodes,x))
     
-    for j in range(episodes):
-        price1[j,:] = q_info[int(n_iterations[j])-n:int(n_iterations[j]),j*4]
-        price2[j,:] = q_info[int(n_iterations[j])-n:int(n_iterations[j]),j*4+1]
+    for j in range(n_episodes):
+        price1[j,:] = q_info[int(n_iterations[j])-x:int(n_iterations[j]),j*4]
+        price2[j,:] = q_info[int(n_iterations[j])-x:int(n_iterations[j]),j*4+1]
         
     return([price1,price2])
 
-def get_forward_price(n,q_table_1,q_table_2,q_info,n_iterations,S,A): 
-    """Get forward n prices for both agents
+def get_forward_price(x,q_table_1,q_table_2,q_info,n_iterations,S,A): 
+    """Get forward x prices for both agents
     
     Arguments:
-        n: number of prices we wish to retrieve
+        x: number of prices we wish to retrieve
         q_table_1: final q-matrix of agent 1
         q_table_2: final q-matrix of agent 2
         q_info: array containing prices and rewards for all iterations per episode
@@ -268,11 +270,10 @@ def get_forward_price(n,q_table_1,q_table_2,q_info,n_iterations,S,A):
         price2: forward prices of agent 2"""
     
     # Initialization
-    episodes = int(q_info.shape[1]/4)
-    price1 = np.zeros((episodes,n))
-    price2 = np.zeros((episodes,n))
+    price1 = np.zeros((n_episodes,x))
+    price2 = np.zeros((n_episodes,x))
     
-    for j in range(episodes):
+    for j in range(n_episodes):
         # Retrieve q-tables for specific episode
         q1 = q_table_1[(j+1)*225:(j+1)*225+225,:]
         q2 = q_table_2[(j+1)*225:(j+1)*225+225,:]
@@ -283,7 +284,7 @@ def get_forward_price(n,q_table_1,q_table_2,q_info,n_iterations,S,A):
         state = find_rowindex(S,p1,p2) 
 
         # N iterations where learning is stopped 
-        for t in range(n):
+        for t in range(x):
             action_a1 = np.argmax(q1[state])
             action_a2 = np.argmax(q2[state])
             price1[j,t] = A[action_a1]
@@ -308,7 +309,7 @@ def is_k_periodic(arr, k):
 
     return all(x == y for x, y in zip(arr, cycle(arr[:k])))
 
-def price_cycle(prices,n_episodes):
+def price_cycle(prices):
     """Find cycle length for every episode
     
     Arguments:
@@ -330,14 +331,14 @@ def price_cycle(prices,n_episodes):
         
     return(cycle)
 
-def graph_cycle(price1,price2,p_N,p_M):
+def graph_cycle(price1,price2):
     """Graph forward prices of both agents"""
     
     graph = plt.plot(price1,marker="o")
     graph2 = plt.plot(price2,marker="o",color="green")
 
-    plt.axhline(y=p_N,alpha=0.4,ls="--",color="black",label="Static Nash")
-    plt.axhline(y=p_M,alpha=0.4,ls="--",color="red",label="Cartel")
+    plt.axhline(y=p_N(),alpha=0.4,ls="--",color="black",label="Static Nash")
+    plt.axhline(y=p_M(),alpha=0.4,ls="--",color="red",label="Cartel")
 
     plt.xlabel('Period')
     plt.ylabel('Price')
@@ -346,7 +347,7 @@ def graph_cycle(price1,price2,p_N,p_M):
     plt.show()
     
 # Compute impulse function after price cut/increase
-def impulse_function(cycles,n_episodes,scenario,deviation_ratio,sample,q_table_1,q_table_2,q_info,n_iterations,S,A):
+def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,q_info,n_iterations,S,A):
     
     """Generates impulse function graph after a deviation scenario (price cut or price raise) at period 10 from agent 1
     
