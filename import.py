@@ -1,20 +1,14 @@
 # Import relevant packages
 import os
+import time
 import numpy as np
 import pandas as pd
 import random
 from IPython.display import clear_output
 from copy import deepcopy
-import seaborn as sns
 import matplotlib.pyplot as plt
-sns.set()
+from itertools import cycle
 
 # Import our custom functions
-os.chdir(path+"/Functions")
-from find_state import find_rowindex
-from profitquantity import quantity_compute, profit_compute, extra_profit_compute
-from init_Q import init_Q
-from q_learning import q_learning_2agents
-from prices import get_last_price, get_forward_price
-from detect_price_cycles import is_k_periodic, price_cycle, graph_cycle
-from impulse_function import impulse_function
+os.chdir(path)
+from functions import find_rowindex, quantity_compute, profit_compute, extra_profit_compute, init_Q, q_learning_2agents, get_last_price, get_forward_price, is_k_periodic, price_cycle, graph_cycle, impulse_function
