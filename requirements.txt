@@ -7,3 +7,4 @@ IPython.display
 copy
 matplotlib
 itertools
+scipy
