@@ -457,14 +457,13 @@ def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q
 # Compute matrices of relative price changes after price cut/raise
 def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,S,A):
 
-    """Returns dictionnary with (predeviation price,deviation price) as a key and post deviation price as a value for each episode and each deviation rank
+    """Returns dictionnary with (predeviation price,deviation price) of deviating agent (agent 1 here) as a key and relative price change as a value for each episode and each deviation rank
     
     Arguments:
         i: agent (0 is agent 1, 1 is agent 2)
         scenario: "cut" or "raise"
         A: action space
         """
-    i -= 1
     
     A_round = np.round(A,2)
     ep = [k for k in range(n_episodes)]
@@ -486,9 +485,9 @@ def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,
                 pass
             else:
                 if i == 1:
-                    pricechanges[(p1[j,1],p1[j,2])].append(p1[j,3])
+                    pricechanges[(p1[j,1],p1[j,2])].append(p1[j,3]/p1[j,2]-1) # postdeviation price/deviation price
                 else:
-                    pricechanges[(p1[j,1],p1[j,2])].append(p2[j,3])
+                    pricechanges[(p1[j,1],p1[j,2])].append(p2[j,3]/p2[j,2]-1) # postdeviation price/deviation price
                     
                 # If we reach lower or upper bound for deviation price, we switch to other episode
                 if (p1[j,2] == A_round[0]) | (p1[j,2] == A_round[len(A)-1]):
@@ -510,7 +509,7 @@ def pricechanges_mat(pricechanges,A):
         row = np.where(A_round==key[0])[0][0]
         column = np.where(A_round==key[1])[0][0]
         if np.isnan(np.mean(pricechanges[key])) == False:
-            mat[row,column] = np.round(np.mean(pricechanges[key])-key[1],2)
+            mat[row,column] = np.round(np.mean(pricechanges[key]),2) # average relative price change
             
     return(mat)
 
