@@ -346,13 +346,14 @@ def graph_cycle(price1,price2):
     plt.show()
     
 # Compute impulse function after price cut/increase
-def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,q_info,n_iterations,S,A):
+def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q_info,n_iterations,S,A,graph=True,n_seq=30,deviation_period=10):
     
     """Generates impulse function graph after a deviation scenario (price cut or price raise) at period 10 from agent 1
     
     Arguments:
         cycles: array containing cycle length of each episode
-        deviation_ratio: (cut or raise) deviation ratio, must be positive
+        scenario: "cut" or "raise"
+        deviation_rank: (cut or raise) deviation rank, must be positive
         sample: "full" (whole sample), "point" (restriction to episodes where prices have converged to a point)
         "point-asym" (point episodes with asymmetric strategies, "point-sym" (point episodes with symmetric strategies),
         "set" (restriction to episodes where prices have converged to a set
@@ -362,11 +363,12 @@ def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,
         n_iterations: array containing number of iterations made in each episode
         S: state array
         A: action array
+        graph: display graph or not, default is True
+        n_seq: number of sequences
+        deviation_period: should be larger than > 1
     
     Returns:
         prices1, prices2: sequence of prices of agent 1 and 2"""
-    
-    n_seq = 30
 
     if sample == "full":
         loop = range(n_episodes)
@@ -393,7 +395,7 @@ def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,
     for j in loop:
         
         # We retrieve the forward prices
-        f_price1, f_price2 = get_forward_price(n_seq,q_table_1,q_table_2,q_info,n_iterations,S,A)
+        f_price1, f_price2 = get_forward_price(10,q_table_1,q_table_2,q_info,n_iterations,S,A)
         # Keep last one
         ## We do this because exploration can still occur towards end of episode, therefore it may take a few iterations for agents to converge to final strategies 
         ## It ensures that we do not observe weird patterns in the restricted case with sample converged to a point
@@ -413,15 +415,16 @@ def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,
 
         for t in range(1,n_seq):
 
-            if t == 10: # we force a price cut from agent 1
+            if t == deviation_period: # we force a price cut from agent 1
 
-                index = np.where(A == f_price1[j][0])[0][0]
+                index = np.where(A == p1)[0][0]
 
                 if scenario == "cut":
-                    p1 = A[max(int(index/deviation_ratio),0)]
+                    #p1 = A[max(int(index/deviation_ratio),0)]
+                    p1 = A[max(int(index-deviation_rank),0)]
                 elif scenario == "raise":
-                    p1 = A[min(int(index*deviation_ratio),A.shape[0]-1)]
-
+                    #p1 = A[min(int(index*deviation_ratio),A.shape[0]-1)]
+                    p1 = A[min(int(index+deviation_rank),A.shape[0]-1)]
                 action_a2 = np.argmax(q2[state])
                 p2 = A[action_a2]
 
@@ -436,16 +439,89 @@ def impulse_function(cycles,scenario,deviation_ratio,sample,q_table_1,q_table_2,
             state = find_rowindex(S,p1,p2) # new state
             
         i += 1
+    
+    if graph == True:
+        # Visualisation
+        plt.plot(prices1.mean(axis=0), marker="o", label = "Agent 1")
+        plt.plot(prices2.mean(axis=0), marker="o", label = "Agent 2")
+        plt.legend(loc='lower right')
+        plt.title('Price cut in period 10 from agent 1')
+        plt.axvline(x=10,alpha=0.4,ls="--",color="black")
 
-    # Visualisation
-    plt.plot(prices1.mean(axis=0), marker="o", label = "Agent 1")
-    plt.plot(prices2.mean(axis=0), marker="o", label = "Agent 2")
-    plt.legend(loc='lower right')
-    plt.title('Price cut in period 10 from agent 1')
-    plt.axvline(x=10,alpha=0.4,ls="--",color="black")
-
-    plt.xlabel('Period')
-    plt.ylabel('Price')
-    plt.show()
+        plt.xlabel('Period')
+        plt.ylabel('Price')
+        plt.show()
             
     return(prices1,prices2)
+
+# Compute matrices of relative price changes after price cut/raise
+def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,S,A):
+
+    """Returns dictionnary with (predeviation price,deviation price) as a key and post deviation price as a value for each episode and each deviation rank
+    
+    Arguments:
+        i: agent (0 is agent 1, 1 is agent 2)
+        scenario: "cut" or "raise"
+        A: action space
+        """
+    i -= 1
+    
+    A_round = np.round(A,2)
+    ep = [k for k in range(n_episodes)]
+
+    # Create dictionnary
+    pricechanges = dict()
+    keys = list(product(A_round, repeat=2))
+    for key in keys:
+        pricechanges[key] = []
+
+    for d in range(1,15):
+        p = impulse_function(cycles,scenario,d,"full",q_table_1,q_table_2,q_info,n_iterations,S,A,graph=False,n_seq=4,deviation_period=2)
+        p1 = np.round(p[0],2)
+        p2 = np.round(p[1],2)
+        for j in ep:
+            # if predeviation price is already max, we switch to other episode
+            if p1[j,1] == p1[j,2]:
+                # If predeviation price == deviation price (can occur for min and max price)
+                pass
+            else:
+                if i == 1:
+                    pricechanges[(p1[j,1],p1[j,2])].append(p1[j,3])
+                else:
+                    pricechanges[(p1[j,1],p1[j,2])].append(p2[j,3])
+                    
+                # If we reach lower or upper bound for deviation price, we switch to other episode
+                if (p1[j,2] == A_round[0]) | (p1[j,2] == A_round[len(A)-1]):
+                    ep.remove(j)
+    
+    return(pricechanges)
+
+def pricechanges_mat(pricechanges,A):
+    """Returns matrix of relative price change after a deviation
+    
+    Arguments:
+        pricechanges: a dictionnary containing (predeviation price,deviation price) as a key and post deviation price as a value
+        A: action space"""
+    
+    mat = np.zeros((len(A),len(A)))
+    A_round = np.round(A,2)
+    
+    for key in pricechanges:
+        row = np.where(A_round==key[0])[0][0]
+        column = np.where(A_round==key[1])[0][0]
+        if np.isnan(np.mean(pricechanges[key])) == False:
+            mat[row,column] = np.round(np.mean(pricechanges[key])-key[1],2)
+            
+    return(mat)
+
+# Concatenate dictionnaries
+def concatDict(dict1, dict2):
+    ''' Concatenate dictionnaries that do not have value for same keys in list'''
+
+    dict3 = {}
+    for key, value in dict1.items():
+        if dict1[key] == []:
+            dict3[key] = dict2[key]
+        if dict1[key] != []:
+            dict3[key] = dict1[key]
+    return dict3
