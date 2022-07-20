@@ -9,7 +9,7 @@ from IPython.display import clear_output
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import seaborn as sns
-from itertools import cycle
+from itertools import cycle, product
 from scipy import optimize
 sns.set()
 from numba import jit
