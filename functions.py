@@ -442,10 +442,10 @@ def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q
     
     if graph == True:
         # Visualisation
-        plt.plot(prices1.mean(axis=0), marker="o", label = "Agent 1")
-        plt.plot(prices2.mean(axis=0), marker="o", label = "Agent 2")
+        plt.plot(prices1.mean(axis=0), marker="o", label = "Deviating agent")
+        plt.plot(prices2.mean(axis=0), marker="o", label = "Non-deviating agent")
         plt.legend(loc='lower right')
-        plt.title('Price cut in period 10 from agent 1')
+        plt.title('Price '+scenario+' in period 10')
         plt.axvline(x=10,alpha=0.4,ls="--",color="black")
 
         plt.xlabel('Period')
@@ -470,9 +470,11 @@ def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,
 
     # Create dictionnary
     pricechanges = dict()
+    punish_profit = dict()
     keys = list(product(A_round, repeat=2))
     for key in keys:
         pricechanges[key] = []
+        punish_profit[key] = []
 
     for d in range(1,15):
         p = impulse_function(cycles,scenario,d,"full",q_table_1,q_table_2,q_info,n_iterations,S,A,graph=False,n_seq=4,deviation_period=2)
@@ -485,15 +487,22 @@ def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,
                 pass
             else:
                 if i == 1:
+                    # We compute relative price change
                     pricechanges[(p1[j,1],p1[j,2])].append(p1[j,3]/p1[j,2]-1) # postdeviation price/deviation price
                 else:
+                    # We compute relative price change and keep prices of agent 1 as key
                     pricechanges[(p1[j,1],p1[j,2])].append(p2[j,3]/p2[j,2]-1) # postdeviation price/deviation price
+                    
+                    # We compute punishment profitability (as compared to status quo) - only concerns non deviating agent
+                    profit_statusquo = profit_compute(p2[j,2],p1[j,2]) # profit had it not punished deviating agent
+                    profit_punish = profit_compute(p2[j,3],p1[j,3])
+                    punish_profit[(p1[j,1],p1[j,2])].append(profit_punish/profit_statusquo-1)
                     
                 # If we reach lower or upper bound for deviation price, we switch to other episode
                 if (p1[j,2] == A_round[0]) | (p1[j,2] == A_round[len(A)-1]):
                     ep.remove(j)
     
-    return(pricechanges)
+    return(pricechanges,punish_profit)
 
 def pricechanges_mat(pricechanges,A):
     """Returns matrix of relative price change after a deviation
