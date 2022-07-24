@@ -23,10 +23,10 @@ alpha = 0.15 # learning rate - baseline scenario
 beta = 4*10**-6 # experimentation parameter - baseline scenario
 
 # Stop criterion
-criterion = 10**4
+criterion = int(1e5)
 
 # Stop in any case
-criterion_final = 15*10**5 
+criterion_final = int(1e9)
 
 # Number of episodes
-n_episodes = 100
+n_episodes = 1000

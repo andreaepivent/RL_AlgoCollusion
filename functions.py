@@ -13,7 +13,8 @@ def fixed_point(p):
     return(ci + mu/(1 - (n + np.exp((a0 - ai + p) / mu))**(-1)))
 
 def p_N():
-    return(round(optimize.fixed_point(fixed_point, [0])[0],2))
+    #return(round(optimize.fixed_point(fixed_point, [0])[0],2))
+    return(optimize.fixed_point(fixed_point, [0])[0])
 
 # Compute cooperation price
 def industry_profit(p):
@@ -22,7 +23,8 @@ def industry_profit(p):
 
 def p_M():
     res = optimize.minimize_scalar(industry_profit)
-    return(round(res.x,2))
+    #return(round(res.x,2))
+    return(res.x)
 
 # Compute quantities, profits and extra-profits
 def quantity_compute(action_agent,action_opponent):
@@ -84,6 +86,7 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
         
     Returns:
         q_info: array containing prices and profits at every iteration for every episode
+        conv_info: array containing number of iterations and last prices of both agents for each episode 
         q_tables1: final q_matrix for agent 1
         q_tables2: final q_matrix for agent 2"""
     
@@ -96,8 +99,11 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
     
     if save_info == True:
         # Store info in array - states, prices for both agents
-        q_info = np.zeros((criterion_final,4*n_episodes))
+        q_info = np.zeros((criterion_final,2*n_episodes))
 
+    # Store number of iterations
+    conv_info = np.zeros((3,n_episodes))
+      
     # Initial Q_tables
     q_tables1 = np.zeros([state_space, action_space])
     q_tables2 = np.zeros([state_space, action_space])
@@ -117,8 +123,8 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
 
         if save_info == True:
             # Store initial state in dataframe
-            q_info[0,j*4] = S[state][0]
-            q_info[0,(j*4)+1] = S[state][1]
+            q_info[0,j*2] = S[state][0]
+            q_info[0,(j*2)+1] = S[state][1]
 
         # Initialize matrix for keeping track of argmax_p q
         stab1 = np.full([state_space],-1)
@@ -161,8 +167,6 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
                 # Store in array - Begin at i = 1
                 q_info[i,j*4] = p1
                 q_info[i,(j*4)+1] = p2
-                q_info[i,(j*4)+2] = reward_a1
-                q_info[i,(j*4)+3] = reward_a2
 
             # Check convergence - If 
             a1_argmax = np.argmax(q_table_a1[state]) 
@@ -209,11 +213,17 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
 
             if (i < criterion_final) & (convergence == True):
                 print("Process has converged")
+                conv_info[0,j] = i
+                conv_info[1,j] = p1
+                conv_info[2,j] = p2
 
             # If we didn't convergence after final threshold, we end the loop anyway
             if (i == criterion_final-1) & (convergence == False):
                 #print("Process has not converged") 
                 convergence = True
+                conv_info[0,j] = i
+                conv_info[1,j] = p1
+                conv_info[2,j] = p2
 
             i += 1
 
@@ -226,42 +236,19 @@ def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterio
     seconds = (time.time() - start_time)
     print("--- %s minutes ---" % (seconds/60))
     if save_info == True:
-        return([q_info,q_tables1,q_tables2])
+        return([q_info,conv_info,q_tables1,q_tables2])
     else:
-        return([q_tables1,q_tables2])
+        return([conv_info,q_tables1,q_tables2])
 
-# Retrieve last and forward prices in an experiment
-def get_last_price(x,q_info,n_iterations):
-    """Retrieve last x prices for both agents
-    
-    Arguments:
-        x: number of prices we wish to retrieve
-        q_info: array containing prices and rewards for all iterations per episode
-        n_iterations: array containing number of iterations made in each episode
-        
-    Return:
-        price1: last prices for agent 1
-        price2: last prices for agent 2"""
-  
-    # Initialization
-    price1 = np.zeros((n_episodes,x))
-    price2 = np.zeros((n_episodes,x))
-    
-    for j in range(n_episodes):
-        price1[j,:] = q_info[int(n_iterations[j])-x:int(n_iterations[j]),j*4]
-        price2[j,:] = q_info[int(n_iterations[j])-x:int(n_iterations[j]),j*4+1]
-        
-    return([price1,price2])
-
-def get_forward_price(x,q_table_1,q_table_2,q_info,n_iterations,S,A): 
+# Retrieve forward prices in a simulation
+def get_forward_prices(x,q_table_1,q_table_2,conv_info,S,A): 
     """Get forward x prices for both agents
     
     Arguments:
         x: number of prices we wish to retrieve
         q_table_1: final q-matrix of agent 1
         q_table_2: final q-matrix of agent 2
-        q_info: array containing prices and rewards for all iterations per episode
-        n_iterations: array containing number of iterations made in each episode
+        conv_info: array containing number of iterations and last prices of both agents for each episode 
         S: state array
         A: action array
         
@@ -279,8 +266,8 @@ def get_forward_price(x,q_table_1,q_table_2,q_info,n_iterations,S,A):
         q2 = q_table_2[(j+1)*225:(j+1)*225+225,:]
     
         # Retrieve last state
-        p1 = get_last_price(1,q_info,n_iterations)[0][j][0]
-        p2 = get_last_price(1,q_info,n_iterations)[1][j][0]
+        p1 = conv_info[1,j]
+        p2 = conv_info[2,j]
         state = find_rowindex(S,p1,p2) 
 
         # N iterations where learning is stopped 
@@ -346,7 +333,7 @@ def graph_cycle(price1,price2):
     plt.show()
     
 # Compute impulse function after price cut/increase
-def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q_info,n_iterations,S,A,graph=True,n_seq=30,deviation_period=10):
+def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,conv_info,S,A,graph=True,n_seq=30,deviation_period=10):
     
     """Generates impulse function graph after a deviation scenario (price cut or price raise) at period 10 from agent 1
     
@@ -359,13 +346,12 @@ def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q
         "set" (restriction to episodes where prices have converged to a set
         q_table_1: final q-matrix of agent 1
         q_table_2: final q-matrix of agent 2
-        q_info: array containing prices and rewards for all iterations per episode
-        n_iterations: array containing number of iterations made in each episode
+        conv_info: array containing number of iterations and last prices of both agents for each episode 
         S: state array
         A: action array
         graph: display graph or not, default is True
         n_seq: number of sequences
-        deviation_period: should be larger than > 1
+        deviation_period: should be larger than > 1 and lower than n_seq
     
     Returns:
         prices1, prices2: sequence of prices of agent 1 and 2"""
@@ -395,7 +381,7 @@ def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q
     for j in loop:
         
         # We retrieve the forward prices
-        f_price1, f_price2 = get_forward_price(10,q_table_1,q_table_2,q_info,n_iterations,S,A)
+        f_price1, f_price2 = get_forward_prices(10,q_table_1,q_table_2,conv_info,S,A)
         # Keep last one
         ## We do this because exploration can still occur towards end of episode, therefore it may take a few iterations for agents to converge to final strategies 
         ## It ensures that we do not observe weird patterns in the restricted case with sample converged to a point
@@ -443,25 +429,31 @@ def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,q
     if graph == True:
         # Visualisation
         plt.plot(prices1.mean(axis=0), marker="o", label = "Deviating agent")
-        plt.plot(prices2.mean(axis=0), marker="o", label = "Non-deviating agent")
+        plt.plot(prices2.mean(axis=0), marker="o", label = "Nondeviating agent")
         plt.legend(loc='lower right')
-        plt.title('Price '+scenario+' in period 10')
+        #plt.title('Price '+scenario+' in period 10')
         plt.axvline(x=10,alpha=0.4,ls="--",color="black")
 
         plt.xlabel('Period')
         plt.ylabel('Price')
+        plt.ylim(1.45, 1.95)
         plt.show()
             
     return(prices1,prices2)
 
 # Compute matrices of relative price changes after price cut/raise
-def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,S,A):
+def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,conv_info,S,A):
 
     """Returns dictionnary with (predeviation price,deviation price) of deviating agent (agent 1 here) as a key and relative price change as a value for each episode and each deviation rank
     
     Arguments:
         i: agent (0 is agent 1, 1 is agent 2)
         scenario: "cut" or "raise"
+        cycles: array containing cycle length of each episode
+        q_table_1: q-matrix of agent 1
+        q_table_2: q-matrix of agent 2
+        conv_info: array containing number of iterations and last prices of both agents for each episode 
+        S: state space
         A: action space
         """
     
@@ -477,7 +469,7 @@ def pricechanges_dict(i,scenario,cycles,q_table_1,q_table_2,q_info,n_iterations,
         punish_profit[key] = []
 
     for d in range(1,15):
-        p = impulse_function(cycles,scenario,d,"full",q_table_1,q_table_2,q_info,n_iterations,S,A,graph=False,n_seq=4,deviation_period=2)
+        p = impulse_function(cycles,scenario,d,"full",q_table_1,q_table_2,conv_info,S,A,graph=False,n_seq=4,deviation_period=2)
         p1 = np.round(p[0],2)
         p2 = np.round(p[1],2)
         for j in ep:
@@ -533,3 +525,113 @@ def concatDict(dict1, dict2):
         if dict1[key] != []:
             dict3[key] = dict1[key]
     return dict3
+
+# Compute impulse function after invitation to collude
+def invitation_collude(deviation_rank=1,q_table_1,q_table_2,conv_info,S,A,graph=True,n_seq=30,deviation_period=10):
+
+    """Generates impulse function for following scenario:
+    * t = deviation_period, agent 1 (exogenously) increases its price
+    * t = deviation_period+1, agent 2 (exogenously) matches its price increase and agent 1 keeps (exogenously) its price level
+    * t = deviation_period+6, agent 1 is released while agent 2 keeps (exogenously) its price level
+    
+    Arguments:
+        deviation_rank: (cut or raise) deviation rank, must be positive
+        q_table_1: final q-matrix of agent 1
+        q_table_2: final q-matrix of agent 2
+        conv_info: array containing number of iterations and last prices of both agents for each episode 
+        S: state array
+        A: action array
+        graph: display graph or not, default is True
+        n_seq: number of sequences
+        deviation_period: should be larger than > 1 and lower than n_seq
+    
+    Returns:
+        prices1, prices2: sequence of prices of agent 1 and 2"""
+    
+    # We restrict to simulations that have converged to point for simplicity
+    sample == "point":
+        loop = np.where((cycles==1)|(cycles==1.5))[0]
+    
+    loop_size = len(loop)
+    
+    prices1 = np.zeros((loop_size,n_seq))
+    prices2 = np.zeros((loop_size,n_seq))
+    
+    # start counter
+    i = 0
+    for j in loop:
+        
+        # We retrieve the forward prices
+        f_price1, f_price2 = get_forward_price(10,q_table_1,q_table_2,q_info,n_iterations,S,A)
+        # Keep last one
+        ## We do this because exploration can still occur towards end of episode, therefore it may take a few iterations for agents to converge to final strategies 
+        ## It ensures that we do not observe weird patterns in the restricted case with sample converged to a point
+        f_price1 = f_price1[:,f_price1.shape[1]-1:f_price1.shape[1]]
+        f_price2 = f_price2[:,f_price2.shape[1]-1:f_price2.shape[1]]
+
+        # We retrieve the appropriate Q-table
+        q1 = q_table_1[(j+1)*225:(j+1)*225+225,:]
+        q2 = q_table_2[(j+1)*225:(j+1)*225+225,:]
+
+        # Find actual state
+        state = find_rowindex(S,f_price1[j][0],f_price2[j][0])
+
+        # We do not consider simulations where agent 1 is already pricing at or above monopoly price
+        if f_price1[j][0] in [A[A.shape[0]-2],A[A.shape[0]-1]]:
+            pass
+        
+        else:
+            # Storing initial values
+            prices1[i,0] = f_price1[j][0]
+            prices2[i,0] = f_price2[j][0]
+
+            for t in range(1,n_seq):
+
+                if t==deviation_period: # we force a pro-collusive deviation from agent 1
+
+                    index = np.where(A == p1)[0][0]
+
+                    if scenario == "cut":
+                        p1 = A[max(int(index-deviation_rank),0)]
+                    elif scenario == "raise":
+                        p1 = A[min(int(index+deviation_rank),A.shape[0]-2)]
+
+                    action_a2 = np.argmax(q2[state])
+                    p2 = A[action_a2]
+
+                elif (t > deviation_period) & (t<deviation_period+6): # we force agent 2 to match previous deviation (invitation accepted)
+                    # agent 1 keeps its previous price
+                    p2 = p1
+
+                elif (t>=deviation_period+6): # we release agent 1 and check reaction, agent 2 keeps its previous price
+                    action_a1 = np.argmax(q1[state])
+                    p1 = A[action_a1]
+
+                else: # Initially, we let both agents behave greedily
+                    action_a1 = np.argmax(q1[state])
+                    action_a2 = np.argmax(q2[state])
+                    p1, p2 = A[action_a1], A[action_a2]
+
+                prices1[i,t] = p1
+                prices2[i,t] = p2
+
+                state = find_rowindex(S,p1,p2) # new state
+
+            i += 1
+    
+    # Remove rows with zero - corresponds to simulations already at or above monopoly price
+    prices1, prices2 = prices1[~np.all(prices1 == 0, axis=1)], prices2[~np.all(prices2 == 0, axis=1)]
+    
+    if graph == True:
+        # Visualisation
+        plt.plot(prices1.mean(axis=0), marker="o", label = "Deviating agent")
+        plt.plot(prices2.mean(axis=0), marker="o", label = "Nondeviating agent")
+        plt.legend(loc='lower left')
+        plt.axvline(x=10,alpha=0.4,ls="--",color="black")
+
+        plt.xlabel('Period')
+        plt.ylabel('Price')
+        plt.ylim(1.45, 1.9)
+        plt.show()
+            
+    return(prices1,prices2)
