@@ -527,7 +527,7 @@ def concatDict(dict1, dict2):
     return dict3
 
 # Compute impulse function after invitation to collude
-def invitation_collude(deviation_rank=1,q_table_1,q_table_2,conv_info,S,A,graph=True,n_seq=30,deviation_period=10):
+def invitation_collude(q_table_1,q_table_2,conv_info,S,A,deviation_rank=1,graph=True,n_seq=30,deviation_period=10):
 
     """Generates impulse function for following scenario:
     * t = deviation_period, agent 1 (exogenously) increases its price
@@ -549,8 +549,7 @@ def invitation_collude(deviation_rank=1,q_table_1,q_table_2,conv_info,S,A,graph=
         prices1, prices2: sequence of prices of agent 1 and 2"""
     
     # We restrict to simulations that have converged to point for simplicity
-    sample == "point":
-        loop = np.where((cycles==1)|(cycles==1.5))[0]
+    loop = np.where((cycles==1)|(cycles==1.5))[0]
     
     loop_size = len(loop)
     
