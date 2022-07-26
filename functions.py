@@ -73,7 +73,7 @@ def find_rowindex(S,row,col):
     return(row_index)
 
 # Q-learning: 2 agents @jit()
-def q_learning_2agents(S, A , q_table, n_episodes=n_episodes, criterion=criterion, criterion_final=criterion_final, save_info=True):
+def q_learning_2agents(S, A , q_table, beta=beta, alpha=alpha,n_episodes=n_episodes, criterion=criterion, criterion_final=criterion_final, save_info=True):
     """Training 2 agents
     Arguments:
         S: state space
