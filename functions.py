@@ -241,7 +241,7 @@ def q_learning_2agents(S, A , q_table, beta=beta, alpha=alpha,n_episodes=n_episo
         return([conv_info,q_tables1,q_tables2])
 
 # Retrieve forward prices in a simulation
-def get_forward_prices(x,q_table_1,q_table_2,conv_info,S,A): 
+def get_forward_prices(x,q_table_1,q_table_2,conv_info,S,A,n_episodes=n_episodes): 
     """Get forward x prices for both agents
     
     Arguments:
@@ -296,7 +296,7 @@ def is_k_periodic(arr, k):
 
     return all(x == y for x, y in zip(arr, cycle(arr[:k])))
 
-def price_cycle(prices):
+def price_cycle(prices,n_episodes=n_episodes):
     """Find cycle length for every episode
     
     Arguments:
@@ -333,7 +333,7 @@ def graph_cycle(price1,price2):
     plt.show()
     
 # Compute impulse function after price cut/increase
-def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,conv_info,S,A,save_as,graph=True,n_seq=30,deviation_period=10,price_cap=True):
+def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,conv_info,S,A,save_as,graph=True,n_seq=30,deviation_period=10,price_cap=True,n_episodes=n_episodes):
     
     """Generates impulse function graph after a deviation scenario (price cut or price raise) at period 10 from agent 1
     
@@ -448,14 +448,14 @@ def impulse_function(cycles,scenario,deviation_rank,sample,q_table_1,q_table_2,c
         plt.xlabel('Period')
         plt.ylabel('Price')
         plt.ylim(1.45, 1.95)
-        plt.savefig(path+"/Output/Baseline/Graphs/"+save_as+".png", format="png")
+        plt.savefig(path+"/Output/"+save_as+".png", format="png")
         plt.show()
         
     print(non_appl)
     return(prices1,prices2)
 
 # Compute impulse function after invitation to collude
-def invitation_collude(cycles,q_table_1,q_table_2,conv_info,S,A,save_as,deviation_rank=1,graph=True,n_seq=30,deviation_period=10,x=6,release_agent=1):
+def invitation_collude(cycles,q_table_1,q_table_2,conv_info,S,A,save_as,deviation_rank=1,graph=True,n_seq=30,deviation_period=10,x=6,release_agent=1,n_episodes=n_episodes):
 
     """Generates impulse function for following scenario:
     * t = deviation_period, agent 1 (exogenously) increases its price
@@ -492,7 +492,7 @@ def invitation_collude(cycles,q_table_1,q_table_2,conv_info,S,A,save_as,deviatio
     for j in loop:
         
         # We retrieve the forward prices
-        f_price1, f_price2 = get_forward_prices(10,q_table_1,q_table_2,conv_info,S,A)
+        f_price1, f_price2 = get_forward_prices(10,q_table_1,q_table_2,conv_info,S,A,n_episodes=n_episodes)
         # Keep last one
         ## We do this because exploration can still occur towards end of episode, therefore it may take a few iterations for agents to converge to final strategies 
         ## It ensures that we do not observe weird patterns in the restricted case with sample converged to a point
@@ -563,7 +563,7 @@ def invitation_collude(cycles,q_table_1,q_table_2,conv_info,S,A,save_as,deviatio
         plt.xlabel('Period')
         plt.ylabel('Price')
         plt.ylim(1.45, 1.9)
-        plt.savefig(path+"/Output/Baseline/Graphs/"+save_as+".png", format="png")
+        plt.savefig(path+"/Output/"+save_as+".png", format="png")
         plt.show()
 
 # Compute matrices of relative price changes after price cut/raise
